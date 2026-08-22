@@ -70,7 +70,7 @@
   }
 
   .nav-logo {
-    font-family: 'Bevan', serif;
+    font-family: Georgia, 'Times New Roman', Times, serif;
     font-size: 1.3rem;
     font-weight: 400;
     letter-spacing: 0.03em;
@@ -105,15 +105,40 @@
     text-align: center;
     position: relative;
     z-index: 1;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('reservas-texas-bg.jpg');
+    background-size: cover;
+    background-position: center 15%;
+    opacity: 0.95;
+    filter: saturate(1.5) contrast(1.1) brightness(1.05);
+    z-index: -2;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+      rgba(28,21,18,0.15) 0%,
+      rgba(28,21,18,0.35) 55%,
+      var(--verde) 100%);
+    z-index: -1;
   }
 
   .hero-eyebrow {
     font-size: 0.65rem;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: var(--dourado);
+    color: var(--areia);
     margin-bottom: 1.5rem;
     opacity: 0;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     animation: fadeUp 0.8s ease forwards 0.2s;
   }
 
@@ -125,19 +150,21 @@
     color: var(--areia);
     margin-bottom: 1.5rem;
     opacity: 0;
+    text-shadow: 0 3px 16px rgba(0,0,0,0.85);
     animation: fadeUp 0.8s ease forwards 0.4s;
   }
 
   .hero-title em {
     font-style: normal;
-    color: var(--dourado);
+    color: var(--branco);
   }
 
   .hero-sub {
     font-size: 0.75rem;
     letter-spacing: 0.1em;
-    color: var(--cinza);
+    color: var(--areia);
     opacity: 0;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     animation: fadeUp 0.8s ease forwards 0.6s;
   }
 
@@ -664,7 +691,7 @@
 <div id="view-reservar">
   <div class="hero">
     <p class="hero-eyebrow">Texas Country Bar · Itapema</p>
-    <h1 class="hero-title">Reserve sua<br><em>mesa</em></h1>
+    <h1 class="hero-title">Reserve sua<br><em>Mesa</em></h1>
     <p class="hero-sub">Sua reserva será confirmada via WhatsApp pela nossa equipe</p>
     <div class="ornament">
       <div class="ornament-line"></div>
