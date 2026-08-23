@@ -74,10 +74,10 @@
     font-size: 1.3rem;
     font-weight: 400;
     letter-spacing: 0.03em;
-    color: var(--dourado);
+    color: var(--branco);
   }
 
-  .nav-logo span { font-weight: 400; color: var(--areia); }
+  .nav-logo span { font-weight: 400; color: var(--branco); }
 
   .nav-actions { display: flex; gap: 1rem; }
 
@@ -101,62 +101,68 @@
 
   /* ── Hero ── */
   .hero {
-    padding: 9rem 2rem 4rem;
     text-align: center;
     position: relative;
     z-index: 1;
+    background: var(--verde);
+  }
+
+  .hero-photo-wrap {
+    position: relative;
     overflow: hidden;
   }
 
-  .hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url('reservas-texas-bg.jpg');
-    background-size: cover;
-    background-position: center 15%;
-    opacity: 0.95;
-    filter: saturate(1.5) contrast(1.1) brightness(1.05);
-    z-index: -2;
+  .hero-photo-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: saturate(1.4) contrast(1.05);
   }
 
-  .hero::after {
+  .hero-photo-wrap::after {
     content: '';
     position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom,
-      rgba(28,21,18,0.15) 0%,
-      rgba(28,21,18,0.35) 55%,
-      var(--verde) 100%);
-    z-index: -1;
+    left: 0; right: 0; bottom: 0;
+    height: 22%;
+    background: linear-gradient(to bottom, rgba(28,21,18,0) 0%, var(--verde) 100%);
+    pointer-events: none;
   }
 
   .hero-eyebrow {
+    position: absolute;
+    top: 5.5rem;
+    left: 0;
+    right: 0;
+    font-family: 'Inter', sans-serif;
     font-size: 0.65rem;
+    font-weight: 400;
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--areia);
-    margin-bottom: 1.5rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.7);
     opacity: 0;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     animation: fadeUp 0.8s ease forwards 0.2s;
+  }
+
+  .hero-text {
+    padding: 1.5rem 2rem 3rem;
   }
 
   .hero-title {
     font-family: 'Bevan', serif;
-    font-size: clamp(2.4rem, 7vw, 4.6rem);
+    font-size: clamp(2rem, 6.5vw, 3.8rem);
     font-weight: 400;
-    line-height: 1.1;
+    text-transform: none;
+    line-height: 1.15;
     color: var(--areia);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.2rem;
     opacity: 0;
-    text-shadow: 0 3px 16px rgba(0,0,0,0.85);
     animation: fadeUp 0.8s ease forwards 0.4s;
   }
 
   .hero-title em {
     font-style: normal;
-    color: var(--branco);
+    color: var(--areia);
   }
 
   .hero-sub {
@@ -164,7 +170,6 @@
     letter-spacing: 0.1em;
     color: var(--areia);
     opacity: 0;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     animation: fadeUp 0.8s ease forwards 0.6s;
   }
 
@@ -690,13 +695,19 @@
 <!-- ════ VIEW: RESERVAR ════ -->
 <div id="view-reservar">
   <div class="hero">
-    <p class="hero-eyebrow">Texas Country Bar · Itapema</p>
-    <h1 class="hero-title">Reserve sua<br><em>Mesa</em></h1>
-    <p class="hero-sub">Sua reserva será confirmada via WhatsApp pela nossa equipe</p>
-    <div class="ornament">
-      <div class="ornament-line"></div>
-      <div class="ornament-diamond"></div>
-      <div class="ornament-line"></div>
+    <div class="hero-photo-wrap">
+      <video class="hero-photo-img" autoplay muted loop playsinline preload="auto" poster="reservas-texas-bg-poster.jpg">
+        <source src="reservas-texas-bg.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="hero-text">
+      <h1 class="hero-title">Reserve sua<br><em>Mesa</em></h1>
+      <p class="hero-sub">Sua reserva será confirmada via WhatsApp pela nossa equipe</p>
+      <div class="ornament">
+        <div class="ornament-line"></div>
+        <div class="ornament-diamond"></div>
+        <div class="ornament-line"></div>
+      </div>
     </div>
   </div>
 
