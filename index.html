@@ -190,6 +190,55 @@
     transform: rotate(45deg);
   }
 
+  /* ── Sorteio (banner + modal de cadastro) ── */
+  .sorteio-banner {
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(90deg, rgba(139,33,49,0.30), rgba(139,33,49,0.10));
+    border-top: 1px solid rgba(139,33,49,0.35);
+    border-bottom: 1px solid rgba(139,33,49,0.35);
+    padding: 0.9rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    text-align: center;
+  }
+  .sorteio-banner-txt {
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--areia);
+  }
+  .sorteio-banner-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.55rem 1.2rem;
+    background: var(--dourado);
+    color: var(--branco);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .sorteio-banner-btn:hover { background: var(--dourado-claro); }
+
+  .sorteio-checkline {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.62rem;
+    color: var(--cinza);
+    line-height: 1.5;
+    text-align: left;
+    margin-bottom: 1.3rem;
+    cursor: pointer;
+  }
+  .sorteio-checkline input { margin-top: 0.2rem; }
+
   /* ── Formulário ── */
   #view-reservar {
     max-width: 560px;
@@ -711,6 +760,12 @@
     </div>
   </div>
 
+  <!-- Banner sorteio -->
+  <div class="sorteio-banner" id="sorteio-banner">
+    <span class="sorteio-banner-txt">🎉 Sorteio: concorra a uma noite por nossa conta!</span>
+    <button class="sorteio-banner-btn" onclick="abrirSorteio()">Cadastrar</button>
+  </div>
+
   <!-- Sucesso -->
   <div id="success-view">
     <div class="success-icon">✦</div>
@@ -816,6 +871,34 @@
     <div class="modal-btns">
       <button class="btn-modal-sim" onclick="confirmarCancelamento()">Sim, cancelar</button>
       <button class="btn-modal-nao" onclick="fecharModal()">Voltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal sorteio (cadastro) -->
+<div class="modal-overlay" id="modal-sorteio">
+  <div class="modal" id="modal-sorteio-conteudo">
+    <h3>Sorteio Texas</h3>
+    <p>Preencha seus dados pra concorrer a uma noite por nossa conta. Não esqueça de seguir, curtir e marcar 3 amigos no post oficial — o resultado sai ao vivo no nosso story!</p>
+    <div style="text-align:left;margin-bottom:1rem;">
+      <label class="form-label">Nome</label>
+      <input class="form-input" type="text" id="sorteio-nome" placeholder="Seu nome">
+    </div>
+    <div style="text-align:left;margin-bottom:1rem;">
+      <label class="form-label">WhatsApp</label>
+      <input class="form-input" type="tel" id="sorteio-whatsapp" placeholder="(47) 99999-9999">
+    </div>
+    <div style="text-align:left;margin-bottom:1.1rem;">
+      <label class="form-label">Instagram (@)</label>
+      <input class="form-input" type="text" id="sorteio-instagram" placeholder="@seu.usuario">
+    </div>
+    <label class="sorteio-checkline">
+      <input type="checkbox" id="sorteio-aceite">
+      Aceito receber novidades e promoções do Texas Country Bar pelo WhatsApp.
+    </label>
+    <div class="modal-btns">
+      <button class="btn-modal-sim" style="background:var(--dourado);" id="btn-sorteio-enviar" onclick="enviarSorteio()">Confirmar cadastro</button>
+      <button class="btn-modal-nao" onclick="fecharSorteio()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -968,6 +1051,53 @@ function novaReserva() {
   document.getElementById('pessoas').value = '';
   document.getElementById('btn-reservar').disabled = false;
   document.getElementById('btn-reservar').textContent = 'Solicitar reserva';
+}
+
+// ══════════════════════════════
+//  SORTEIO (cadastro separado das reservas)
+// ══════════════════════════════
+function abrirSorteio() {
+  document.getElementById('modal-sorteio').classList.add('open');
+}
+
+function fecharSorteio() {
+  document.getElementById('modal-sorteio').classList.remove('open');
+}
+
+async function enviarSorteio() {
+  const nome = document.getElementById('sorteio-nome').value.trim();
+  const whatsapp = document.getElementById('sorteio-whatsapp').value.trim();
+  const instagram = document.getElementById('sorteio-instagram').value.trim();
+  const aceite = document.getElementById('sorteio-aceite').checked;
+
+  if (!nome || !whatsapp) {
+    showToast('Preencha nome e WhatsApp');
+    return;
+  }
+
+  const btn = document.getElementById('btn-sorteio-enviar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    await db.ref('sorteio_cadastros').push({
+      nome,
+      whatsapp,
+      instagram: instagram || '',
+      aceitePromo: aceite,
+      criadoEm: Date.now()
+    });
+    document.getElementById('modal-sorteio-conteudo').innerHTML = `
+      <h3>Cadastro confirmado! 🍀</h3>
+      <p>Boa sorte no sorteio — não esqueça de seguir, curtir e marcar 3 amigos no post oficial pra valer sua participação. O resultado sai ao vivo no nosso story!</p>
+      <div class="modal-btns">
+        <button class="btn-modal-nao" onclick="fecharSorteio()">Fechar</button>
+      </div>`;
+  } catch(e) {
+    showToast('Erro ao cadastrar. Tente novamente.');
+    btn.disabled = false;
+    btn.textContent = 'Confirmar cadastro';
+  }
 }
 
 // ══════════════════════════════
