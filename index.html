@@ -781,6 +781,16 @@
     <button class="btn-nova" onclick="novaReserva()">Fazer nova reserva</button>
   </div>
 
+  <!-- Fechado: fora da janela de liberação (fim de semana) -->
+  <div id="fechado-view" style="display:none; text-align:center; padding:4rem 2rem; position:relative; z-index:1; max-width:500px; margin:0 auto;">
+    <div class="success-icon">🕖</div>
+    <h2 class="success-title">Reservas em breve</h2>
+    <p class="success-msg">
+      Nos fins de semana, as reservas abrem às 19h e ficam disponíveis por tempo limitado.<br>
+      Volte às 19h para garantir sua mesa!
+    </p>
+  </div>
+
   <!-- Formulário -->
   <div id="form-reserva">
 
@@ -946,6 +956,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // data mínima = hoje
   const hoje = new Date().toISOString().split('T')[0];
   document.getElementById('data').min = hoje;
+  iniciarControleLiberacao();
 });
 
 function renderTimeGrid() {
@@ -981,9 +992,62 @@ function renderPessoasGrid() {
 }
 
 // ══════════════════════════════
+//  LIBERAÇÃO DE RESERVAS (fim de semana, janela 19:00–19:30)
+// ══════════════════════════════
+const DIAS_RESTRITOS = [0, 5, 6]; // dom, sex, sáb
+const HORA_FECHAMENTO = '19:30';
+let liberacaoAtual = null;
+
+function hojeISOReserva() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function paraMinutosReserva(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+function minutosAgoraReserva() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+function diaRestritoHoje() {
+  return DIAS_RESTRITOS.includes(new Date().getDay());
+}
+
+function reservaEstaLiberada() {
+  if (!diaRestritoHoje()) return true;
+  if (!liberacaoAtual || !liberacaoAtual.liberado) return false;
+  return minutosAgoraReserva() < paraMinutosReserva(HORA_FECHAMENTO);
+}
+
+function iniciarControleLiberacao() {
+  if (!diaRestritoHoje()) return;
+  db.ref('liberacao_reservas/' + hojeISOReserva()).on('value', snap => {
+    liberacaoAtual = snap.val();
+    avaliarEstadoReserva();
+  });
+  setInterval(avaliarEstadoReserva, 15000);
+  avaliarEstadoReserva();
+}
+
+function avaliarEstadoReserva() {
+  const aberto = reservaEstaLiberada();
+  const formEl = document.getElementById('form-reserva');
+  const fechadoEl = document.getElementById('fechado-view');
+  if (!formEl || !fechadoEl) return;
+  if (document.getElementById('success-view').style.display === 'block') return;
+  formEl.style.display = aberto ? 'block' : 'none';
+  fechadoEl.style.display = aberto ? 'none' : 'block';
+}
+
+// ══════════════════════════════
 //  ENVIAR RESERVA
 // ══════════════════════════════
 async function enviarReserva() {
+  if (!reservaEstaLiberada()) {
+    showToast('Reservas fechadas no momento. Volte às 19h!');
+    return;
+  }
   const nome = document.getElementById('nome').value.trim();
   const telefone = document.getElementById('telefone').value.trim();
   const data = document.getElementById('data').value;
