@@ -781,16 +781,6 @@
     <button class="btn-nova" onclick="novaReserva()">Fazer nova reserva</button>
   </div>
 
-  <!-- Fechado: fora da janela de liberação (fim de semana) -->
-  <div id="fechado-view" style="display:none; text-align:center; padding:4rem 2rem; position:relative; z-index:1; max-width:500px; margin:0 auto;">
-    <div class="success-icon">🕖</div>
-    <h2 class="success-title">Reservas em breve</h2>
-    <p class="success-msg">
-      Nos fins de semana, as reservas abrem às 19h e ficam disponíveis por tempo limitado.<br>
-      Volte às 19h para garantir sua mesa!
-    </p>
-  </div>
-
   <!-- Formulário -->
   <div id="form-reserva">
 
@@ -806,12 +796,12 @@
 
     <div class="form-section">
       <label class="form-label">Data</label>
-      <input class="form-input" type="date" id="data">
+      <input class="form-input" type="date" id="data" onchange="checarDisponibilidade()">
     </div>
 
     <div class="form-section">
       <label class="form-label">Horário</label>
-      <select class="form-input" id="horario" size="1">
+      <select class="form-input" id="horario" size="1" onchange="checarDisponibilidade()">
         <option value="" disabled selected>Selecione um horário</option>
         <option>11:00</option><option>11:30</option><option>12:00</option>
         <option>12:30</option><option>13:00</option><option>13:30</option>
@@ -822,6 +812,7 @@
         <option>20:00</option><option>20:30</option><option>21:00</option>
         <option>21:30</option><option>22:00</option>
       </select>
+      <div id="limite-info" style="font-size:0.65rem;margin-top:0.5rem;"></div>
     </div>
 
     <div class="form-section">
@@ -956,7 +947,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // data mínima = hoje
   const hoje = new Date().toISOString().split('T')[0];
   document.getElementById('data').min = hoje;
-  iniciarControleLiberacao();
 });
 
 function renderTimeGrid() {
@@ -992,62 +982,51 @@ function renderPessoasGrid() {
 }
 
 // ══════════════════════════════
-//  LIBERAÇÃO DE RESERVAS (fim de semana, janela 19:00–19:30)
+//  LIMITE DE RESERVAS POR DATA + HORÁRIO
 // ══════════════════════════════
-const DIAS_RESTRITOS = [0, 5, 6]; // dom, sex, sáb
-const HORA_FECHAMENTO = '19:30';
-let liberacaoAtual = null;
-
-function hojeISOReserva() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-}
-function paraMinutosReserva(hhmm) {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-function minutosAgoraReserva() {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
-}
-function diaRestritoHoje() {
-  return DIAS_RESTRITOS.includes(new Date().getDay());
-}
-
-function reservaEstaLiberada() {
-  if (!diaRestritoHoje()) return true;
-  if (!liberacaoAtual || !liberacaoAtual.liberado) return false;
-  return minutosAgoraReserva() < paraMinutosReserva(HORA_FECHAMENTO);
-}
-
-function iniciarControleLiberacao() {
-  if (!diaRestritoHoje()) return;
-  db.ref('liberacao_reservas/' + hojeISOReserva()).on('value', snap => {
-    liberacaoAtual = snap.val();
-    avaliarEstadoReserva();
+async function contarPessoasReservadas(data, horario) {
+  const snap = await db.ref('reservas').orderByChild('data').equalTo(data).once('value');
+  let total = 0;
+  snap.forEach(ch => {
+    const v = ch.val();
+    if (v.horario === horario && v.status !== 'cancelado') total += parseInt(v.pessoas) || 0;
   });
-  setInterval(avaliarEstadoReserva, 15000);
-  avaliarEstadoReserva();
+  return total;
 }
 
-function avaliarEstadoReserva() {
-  const aberto = reservaEstaLiberada();
-  const formEl = document.getElementById('form-reserva');
-  const fechadoEl = document.getElementById('fechado-view');
-  if (!formEl || !fechadoEl) return;
-  if (document.getElementById('success-view').style.display === 'block') return;
-  formEl.style.display = aberto ? 'block' : 'none';
-  fechadoEl.style.display = aberto ? 'none' : 'block';
+async function checarDisponibilidade() {
+  const data = document.getElementById('data').value;
+  const horario = document.getElementById('horario').value;
+  const infoEl = document.getElementById('limite-info');
+  if (!infoEl) return;
+  if (!data || !horario) { infoEl.textContent = ''; return; }
+
+  const limSnap = await db.ref('limites_reservas/' + data + '/' + horario).once('value');
+  const lim = limSnap.val();
+  if (!lim) { infoEl.textContent = ''; return; }
+
+  const total = await contarPessoasReservadas(data, horario);
+  const restante = lim.limite - total;
+  if (restante <= 0) {
+    infoEl.innerHTML = '<span style="color:var(--vermelho)">Esgotado para este horário — escolha outro horário ou data.</span>';
+  } else {
+    infoEl.innerHTML = `<span style="color:var(--cinza)">Restam ${restante} lugar${restante > 1 ? 'es' : ''} neste horário.</span>`;
+  }
+}
+
+async function checarLimiteAntesDeEnviar(data, horario, pessoas) {
+  const limSnap = await db.ref('limites_reservas/' + data + '/' + horario).once('value');
+  const lim = limSnap.val();
+  if (!lim) return true;
+  const total = await contarPessoasReservadas(data, horario);
+  const pessoasNum = parseInt(pessoas) || 0;
+  return (total + pessoasNum) <= lim.limite;
 }
 
 // ══════════════════════════════
 //  ENVIAR RESERVA
 // ══════════════════════════════
 async function enviarReserva() {
-  if (!reservaEstaLiberada()) {
-    showToast('Reservas fechadas no momento. Volte às 19h!');
-    return;
-  }
   const nome = document.getElementById('nome').value.trim();
   const telefone = document.getElementById('telefone').value.trim();
   const data = document.getElementById('data').value;
@@ -1060,6 +1039,12 @@ async function enviarReserva() {
 
   if (!nome || !telefone || !data || !horario || !ambiente || !pessoas) {
     showToast('Preencha todos os campos obrigatórios');
+    return;
+  }
+
+  const disponivel = await checarLimiteAntesDeEnviar(data, horario, pessoas);
+  if (!disponivel) {
+    showToast('Esse horário está esgotado. Escolha outro horário ou data.');
     return;
   }
 
