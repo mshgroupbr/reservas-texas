@@ -801,7 +801,7 @@
 
     <div class="form-section">
       <label class="form-label">Horário</label>
-      <select class="form-input" id="horario" size="1" onchange="checarDisponibilidade()">
+      <select class="form-input" id="horario" size="1">
         <option value="" disabled selected>Selecione um horário</option>
         <option>11:00</option><option>11:30</option><option>12:00</option>
         <option>12:30</option><option>13:00</option><option>13:30</option>
@@ -982,45 +982,60 @@ function renderPessoasGrid() {
 }
 
 // ══════════════════════════════
-//  LIMITE DE RESERVAS POR DATA + HORÁRIO
+//  LIMITE DE RESERVAS POR DIA (horário = corte, pessoas = total do dia)
 // ══════════════════════════════
-async function contarPessoasReservadas(data, horario) {
+const TODOS_HORARIOS_RESERVA = ["11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30","22:00"];
+
+function paraMinutosReserva(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+async function contarPessoasNoDia(data) {
   const snap = await db.ref('reservas').orderByChild('data').equalTo(data).once('value');
   let total = 0;
   snap.forEach(ch => {
     const v = ch.val();
-    if (v.horario === horario && v.status !== 'cancelado') total += parseInt(v.pessoas) || 0;
+    if (v.status !== 'cancelado') total += parseInt(v.pessoas) || 0;
   });
   return total;
 }
 
 async function checarDisponibilidade() {
   const data = document.getElementById('data').value;
-  const horario = document.getElementById('horario').value;
+  const horarioSelect = document.getElementById('horario');
   const infoEl = document.getElementById('limite-info');
-  if (!infoEl) return;
-  if (!data || !horario) { infoEl.textContent = ''; return; }
+  if (!infoEl || !horarioSelect || !data) { if (infoEl) infoEl.textContent = ''; return; }
 
-  const limSnap = await db.ref('limites_reservas/' + data + '/' + horario).once('value');
+  const limSnap = await db.ref('limites_reservas/' + data).once('value');
   const lim = limSnap.val();
+
+  const valorAtual = horarioSelect.value;
+  const horariosPermitidos = lim
+    ? TODOS_HORARIOS_RESERVA.filter(h => paraMinutosReserva(h) <= paraMinutosReserva(lim.horarioLimite))
+    : TODOS_HORARIOS_RESERVA;
+  horarioSelect.innerHTML = '<option value="" disabled' + (valorAtual ? '' : ' selected') + '>Selecione um horário</option>' +
+    horariosPermitidos.map(h => `<option ${h === valorAtual ? 'selected' : ''}>${h}</option>`).join('');
+
   if (!lim) { infoEl.textContent = ''; return; }
 
-  const total = await contarPessoasReservadas(data, horario);
-  const restante = lim.limite - total;
+  const total = await contarPessoasNoDia(data);
+  const restante = lim.limitePessoas - total;
   if (restante <= 0) {
-    infoEl.innerHTML = '<span style="color:var(--vermelho)">Esgotado para este horário — escolha outro horário ou data.</span>';
+    infoEl.innerHTML = '<span style="color:var(--vermelho)">Esgotado para esse dia — escolha outra data.</span>';
   } else {
-    infoEl.innerHTML = `<span style="color:var(--cinza)">Restam ${restante} lugar${restante > 1 ? 'es' : ''} neste horário.</span>`;
+    infoEl.innerHTML = `<span style="color:var(--cinza)">Reservas até ${lim.horarioLimite} · restam ${restante} lugar${restante > 1 ? 'es' : ''} nesse dia.</span>`;
   }
 }
 
 async function checarLimiteAntesDeEnviar(data, horario, pessoas) {
-  const limSnap = await db.ref('limites_reservas/' + data + '/' + horario).once('value');
+  const limSnap = await db.ref('limites_reservas/' + data).once('value');
   const lim = limSnap.val();
   if (!lim) return true;
-  const total = await contarPessoasReservadas(data, horario);
+  if (paraMinutosReserva(horario) > paraMinutosReserva(lim.horarioLimite)) return false;
+  const total = await contarPessoasNoDia(data);
   const pessoasNum = parseInt(pessoas) || 0;
-  return (total + pessoasNum) <= lim.limite;
+  return (total + pessoasNum) <= lim.limitePessoas;
 }
 
 // ══════════════════════════════
